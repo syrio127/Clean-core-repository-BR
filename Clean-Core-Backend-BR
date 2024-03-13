@@ -350,3 +350,207 @@ srv.on('READ', 'BusinessPartners', async (req) => {
     })
 ```
 
+
+## Replace p2c.cap.contracts-Contracts.csv
+```
+ID,description,beginDate,endDate,totalMonthValue,totalMonthCurrency,businessPartner_BusinessPartner
+CN-100,CCL Mining CO - Perforation 2023,2023-03-01,2023-10-25,0,USD,55910005
+CN-105,Pacific Transportation INC. South Africa Mining,2022-02-02,2028-04-02,0,USD,55910006
+CN-106,Atlantic Transportation INC. - Cooper Mine-Port Movement,2023-02-02,2026-05-18,0,USD,55910007
+CN-108,Pure Gold Company - Explosives and Perforation, 2023-02-02,2025-12-02,0,USD,55910008
+CN-109,Rusell & CO Diamond Mining - Australian Full Operation Contract,2023-03-03,2030-10-18,0,USD,9980000000
+```
+## Uncomment the schema.cds business partner file
+
+## Replace external-test.js
+
+```
+const cds = require('@sap/cds')
+
+module.exports = async (srv) => {
+
+	//* Local Service Entities
+	const {Contracts, BusinessPartners, ContractItems } = srv.entities;
+	
+	//* Tools API connection
+	 const toolsAPI = await cds.connect.to("toolsManager")
+	
+	//*Business Partner Connect
+	const bupa = await cds.connect.to('API_BUSINESS_PARTNER')
+	const {A_BusinessPartner} = bupa.entities;
+
+	//* Entity BusinessPartners READ -- oData - PES S4HANA Version - Basic Auth Credentials Setup
+
+    srv.on('READ', 'BusinessPartners', async (req) => {
+        
+        const username = 'MIG_BTP_RAP_USER000';
+        const password = 'Miguelito@1234567890';
+    
+        const credentials = Buffer.from(`${username}:${password}`).toString('base64');
+        const authHeader = `Basic ${credentials}`;
+
+        return await bupa.transaction(req).send({
+            query: req.query,
+            headers: {
+                'Authorization': authHeader,
+            }
+        })
+    })
+
+     /**
+ //* REST API Function Calls for Tools
+ */
+
+     //**Function Read Tools -- NO oData
+
+     srv.on('getTools',async (req) => {
+        
+        const toolsAPI = await cds.connect.to("toolsManager")
+        return await toolsAPI.send({query: 'GET /api/tools', headers:{
+            userName: "p2c-comm-user",
+            APIKey: "K306GLEZ1TPZZU4CIVGTQFQHXZ2920"
+        }})                
+    })
+
+    /**
+//*Implement Contract Value Calculation
+//*Implement Business Partner Call - SAP S4HANA API
+*/
+
+//*Total Contract Value Calculation
+srv.after('READ','Contracts',async (contracts, req) => {
+	const db = srv.transaction(req);
+	for(let each of contracts){
+
+		//*Total Contract Value Calculation
+		const items = await      
+		db.run(SELECT.from('ContractItems').where({contract_ID:each.ID}))
+		
+		for (let i = 0; i < items.length; i++) {
+			const element = items[i];
+			each.totalMonthValue += element.price
+		}
+	}
+})
+
+//*BP Name Completion
+
+srv.after('READ','Contracts',async (contracts, req) => {
+
+	const db = srv.transaction(req);
+	for(const cont of contracts){
+	
+		//* BP Name Completion
+		const query = SELECT(A_BusinessPartner)
+		.where({BusinessPartner: cont.businessPartner_BusinessPartner})
+		.columns('BusinessPartnerFullName')
+
+        const username = 'MIG_BTP_RAP_USER000';
+        const password = 'Miguelito@1234567890';
+    
+        const credentials = Buffer.from(`${username}:${password}`).toString('base64');
+        const authHeader = `Basic ${credentials}`;
+
+        const bpName = await bupa.transaction().send({
+            query: query,
+            headers: {
+                'Authorization': authHeader,
+            }
+        })
+
+	
+		if(bpName){
+			cont.bpName = bpName[0].BusinessPartnerFullName;
+		} else {
+			cont.bpName = 'BP Name Not Found'
+		}
+	}
+})
+
+//* Contract Item Creation improvement
+//* Change Tool Availability in Tool Management System
+//* (Calculate item price)
+//* (Add tool name)
+
+srv.before('CREATE','ContractItems',async (req) => {
+
+    //* Days duration calculation
+    let beginDate = new Date(`${ req.data.beginDate }`).getTime();
+    let endDate = new Date(`${ req.data.endDate }`).getTime();
+    let daysDiff = endDate - beginDate;
+    const difference = daysDiff/(1000*60*60*24);
+    
+    //*Change tool availability
+    await toolsAPI.send({
+        query: `PATCH /api/tools/${req.data.tool_ID}`,
+            headers: {
+                userName: "p2c-comm-user",
+                APIKey: "K306GLEZ1TPZZU4CIVGTQFQHXZ2920"
+            }
+        })
+        .then(res => {
+            const msg = res;
+        })
+    
+    //*Price Calculation and add tool name
+    
+    await toolsAPI.send({
+        query: `GET /api/tools/${req.data.tool_ID}`,
+            headers: {
+                userName: "p2c-comm-user",
+                APIKey: "K306GLEZ1TPZZU4CIVGTQFQHXZ2920"
+            }
+        })
+        .then (res => {
+            req.data.toolName = res.tool.toolName;
+            req.data.price = res.tool.toolDailyPrice * difference;
+        })
+    })
+
+
+    //* Function Read Tool By ID -- No oData
+    //* URL de Consulta: http://localhost:4004/demosrv/getToolById(id='64da6b6e55b27b4c05d262c1')
+
+    srv.on('getToolById',async (req) => {
+    
+        const { id } = req.data
+        const toolsAPI = await cds.connect.to("toolsManager")
+        return await toolsAPI.send({query:`GET /api/tools/${id}`, headers:{
+            userName: "p2c-comm-user",
+            APIKey: "K306GLEZ1TPZZU4CIVGTQFQHXZ2920"
+         }})
+    })
+
+    //* Function to get a list of available tools according description
+    //* URL de Consulta: http://localhost:4004/demosrv/getToolsByDescription(description='High performance Drill')
+
+    srv.on('getToolsByDescription', async (req) => {
+        
+        const { description } = req.data 
+        const toolsAPI = await cds.connect.to("toolsManager")
+        return await toolsAPI.send({query:`GET /api/tools/${description}/1`, headers: {
+            userName: "p2c-comm-user",
+            APIKey: "K306GLEZ1TPZZU4CIVGTQFQHXZ2920"
+        }})
+    })
+
+
+    //* Function to change boolean status of a tool (available), to be called on
+    //* contract item creation
+    
+    srv.on('changeToolStatus', async (req) => {
+        
+        const { id } = req.data
+        const toolsAPI = await cds.connect.to("toolsManager")
+        return await toolsAPI.send({query:`PATCH /api/tools/${id}`, headers: {
+            userName: "p2c-comm-user",
+            APIKey: "K306GLEZ1TPZZU4CIVGTQFQHXZ2920"
+        }})
+    })
+
+
+
+}
+
+```
+

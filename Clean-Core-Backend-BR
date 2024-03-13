@@ -83,3 +83,20 @@ a324e459-a773-4616-8f48-dc60a3ab890f,CN-106,2023-02-02,2023-02-02,26019,USD,65d6
 ac184d7a-b485-493e-be77-9d34c2d76407,CN-108,2023-02-02,2023-02-02,17000,USD,65d608bafc04cd3d30371377,TR-101-HT-03
 cef9a93e-2f97-47ec-8256-7ae3ef7b7704,CN-109,2023-03-03,2023-03-03,17000,USD,65d608bafc04cd3d30371378,TR-101-HT-04
 ```
+## external-test.cds
+
+```
+using { p2c.cap.contracts as my } from '../db/schema';
+
+
+service DemoService @(path: '/demosrv'){
+
+    //**Business Partner integration from S4HANA */
+
+    @readonly
+    // entity BusinessPartners as projection on my.BusinessPartners;
+    entity Contracts as projection on my.Contracts;
+    entity ContractItems as projection on my.ContractItems;
+}
+
+```

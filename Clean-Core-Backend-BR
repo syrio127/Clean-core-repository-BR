@@ -123,3 +123,23 @@ entity BusinessPartners as projection on bpar.A_BusinessPartner {
 ```
 
 # <mark> Do not forget uncomment in external-test.cds the commented line </mark>
+
+
+## package.json update
+
+```
+"cds": {
+    "requires": {
+      "API_BUSINESS_PARTNER": {
+        "kind": "odata-v2",
+        "model": "srv/external/API_BUSINESS_PARTNER",
+        "[sandbox]" : {
+          "credentials": {
+            "url" : "https://my400827-api.lab.s4hana.cloud.sap/sap/opu/odata/sap/API_BUSINESS_PARTNER"
+          }
+        }
+      }
+    }
+  }
+```
+

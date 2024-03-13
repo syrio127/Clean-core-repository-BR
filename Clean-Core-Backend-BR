@@ -100,3 +100,26 @@ service DemoService @(path: '/demosrv'){
 }
 
 ```
+
+
+## srv/external/data/API_BUSINESS_PARTNER-A_BusinessPartner.csv
+```
+BusinessPartner;BusinessPartnerFullName;BusinessPartnerIsBlocked
+1000038;Williams Electric Drives;false
+1000040;Smith Batteries Ltd;false
+1000042;Johnson Automotive Supplies;true
+```
+
+## Add to schema.cds
+
+```
+using { API_BUSINESS_PARTNER as bpar } from '../srv/external/API_BUSINESS_PARTNER.csn';
+
+entity BusinessPartners as projection on bpar.A_BusinessPartner {
+    key BusinessPartner,
+    BusinessPartnerFullName,
+    BusinessPartnerIsBlocked 
+}
+```
+
+# <mark> Do not forget uncomment in external-test.cds the commented line </mark>

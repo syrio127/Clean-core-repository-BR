@@ -143,3 +143,67 @@ entity BusinessPartners as projection on bpar.A_BusinessPartner {
   }
 ```
 
+## external-test.js (Version APIKEY) - NOT USE TODAY
+
+```
+const cds = require('@sap/cds')
+
+module.exports = async (srv) => {
+
+	//* Local Service Entities
+	const {Contracts, BusinessPartners, ContractItems } = srv.entities;
+	
+	//* Tools API connection
+	// const toolsAPI = await cds.connect.to("toolsManager")
+	
+	//*Business Partner Connect
+	const bupa = await cds.connect.to('API_BUSINESS_PARTNER')
+	const {A_BusinessPartner} = bupa.entities;
+
+	//* Entity BusinessPartners READ -- oData
+	srv.on('READ', 'BusinessPartners', async (req) => {
+		return await bupa.transaction(req).send({
+			query: req.query,
+			headers: {
+				apikey: "lSnMaBSXTGh7YX1aLfAyN08AdDkVRsfz"
+			}
+		})
+	})
+}
+```
+## external-test.js (Version BASIC AUTH)
+```
+
+const cds = require('@sap/cds')
+
+module.exports = async (srv) => {
+
+	//* Local Service Entities
+	const {Contracts, BusinessPartners, ContractItems } = srv.entities;
+	
+	//* Tools API connection
+	// const toolsAPI = await cds.connect.to("toolsManager")
+	
+	//*Business Partner Connect
+	const bupa = await cds.connect.to('API_BUSINESS_PARTNER')
+	const {A_BusinessPartner} = bupa.entities;
+
+	//* Entity BusinessPartners READ -- oData - PES S4HANA Version - Basic Auth Credentials Setup
+
+srv.on('READ', 'BusinessPartners', async (req) => {
+	
+	const username = 'MIG_BTP_RAP_USER000';
+	const password = 'Miguelito@1234567890';
+  
+	const credentials = Buffer.from(`${username}:${password}`).toString('base64');
+	const authHeader = `Basic ${credentials}`;
+
+	return await bupa.transaction(req).send({
+		query: req.query,
+		headers: {
+			'Authorization': authHeader,
+		}
+	})
+})
+}
+```

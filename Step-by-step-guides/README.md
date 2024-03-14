@@ -12,3 +12,17 @@ I hope this content is useful to you and if you require any type of support, ple
 Best regards
 
 Rodrigo Riveros A.
+
+---
+
+Olá, espero que você esteja muito bem.
+Deixo para vocês os guias de desenvolvimento passo a passo do que vimos durante o treinamento.
+Os guias são criados para trabalhar com o API sandbox no API.SAP.COM, que agora está online novamente, portanto devem utilizar os arquivos CSV que estão no guia e não os que utilizamos no workshop.
+As conexões com o **S4HANA também devem funcionar como API e não como Autenticação Básica**, use como está no guia.
+fora de linha.
+
+Espero que este conteúdo seja útil para você e caso necessite de algum tipo de suporte, avise-nos.
+
+Atenciosamente
+
+Rodrigo Riveros A.

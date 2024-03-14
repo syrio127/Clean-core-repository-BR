@@ -1,0 +1,57 @@
+Create Outbound Service
+
+Z_MIG_MX_COMM_CON
+HTTP Service ODATA
+
+Create Communication Scenario
+ZMIG_MX_OUT_ODATA_CONTRATOS
+Communication Scenario Type	Customer Managed
+Allowed Instacnes	One Instance per client
+
+In Outbound 
+check Unauthenticated
+Outbound Services
+Outbound Service ID	Z_MIG_MX_COMM_CON
+
+Publish Locally
+
+-----------------------------
+
+ABAP Enviroment Web 
+
+Create Communication System 
+
+ZMIG_CONTRATOS
+hostname	Hostname Backend
+port 		443
+
+User for Outbound
+None	noe
+
+Create Comunication Arragment
+Arrangent Name		ZMIG_MX_OUT_ODATA_CONTRATOS
+Communication System	ZMIG_CONTRATOS
+
+User Name	None	None
+
+Path	/demosrv/
+
+
+
+Create Model consumtion (Descargar metadata del Backend del contrato)
+Z_MIG_MX_CONTRATOS
+
+
+Service Definition
+
+ZUI_MIGMXTBCAL_O
+
+@EndUserText.label: 'Service definition for ZC_MIGMXTBCAL'
+define service ZUI_MIGMXTBCAL_O4 {
+  expose ZC_MIGMXTBCAL as CALCONTRATOS;
+  expose ZR_MIGMXCONT  as CONTRATOS;
+}
+
+Service Binding
+
+ZUI_MIGMXTBCAL_O4

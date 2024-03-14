@@ -1,0 +1,22 @@
+Database
+
+@EndUserText.label : 'Tabla calificacion Contrato'
+@AbapCatalog.enhancement.category : #NOT_EXTENSIBLE
+@AbapCatalog.tableCategory : #TRANSPARENT
+@AbapCatalog.deliveryClass : #A
+@AbapCatalog.dataMaintenance : #RESTRICTED
+define table zmigmxtbcal {
+
+  key client            : abap.clnt not null;
+  key comment_uuid      : sysuuid_x16 not null;
+  comment_id            : abap.numc(8) not null;
+  rating_num            : abap.int1 not null;
+  details               : abap.string(256);
+  contract_id           : abap.char(256) not null;
+  created_by            : abp_creation_user;
+  created_at            : abp_creation_tstmpl;
+  last_changed_by       : abp_lastchange_user;
+  last_changed_at       : abp_lastchange_tstmpl;
+  local_last_changed_at : abp_locinst_lastchange_tstmpl;
+
+}

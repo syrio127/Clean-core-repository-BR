@@ -1,0 +1,293 @@
+ZBP_MIGMXTBCAL
+
+Local Tpes
+
+CLASS LHC_CALCONTRATOS DEFINITION INHERITING FROM CL_ABAP_BEHAVIOR_HANDLER.
+  PRIVATE SECTION.
+    METHODS:
+      GET_GLOBAL_AUTHORIZATIONS FOR GLOBAL AUTHORIZATION
+        IMPORTING
+           REQUEST requested_authorizations FOR CALCONTRATOS
+        RESULT result,
+      setCALID FOR DETERMINE ON SAVE
+            IMPORTING keys FOR CALCONTRATOS~setCALID.
+ENDCLASS.
+
+CLASS LHC_CALCONTRATOS IMPLEMENTATION.
+  METHOD GET_GLOBAL_AUTHORIZATIONS.
+  ENDMETHOD.
+  METHOD setCALID.
+
+     READ ENTITIES OF zr_migmxtbcal IN LOCAL MODE
+  ENTITY calcontratos
+    FIELDS ( commentid )
+    WITH CORRESPONDING #( keys )
+  RESULT DATA(comms).
+
+    DELETE comms WHERE commentid IS NOT INITIAL.
+    CHECK comms IS NOT INITIAL.
+
+    "Get max tracelID
+    SELECT SINGLE FROM zmigmxtbcal FIELDS MAX( comment_id ) INTO @DATA(max_commid).
+
+    "update involved instances
+    MODIFY ENTITIES OF zr_migmxtbcal IN LOCAL MODE
+      ENTITY calcontratos
+        UPDATE FIELDS ( commentid )
+        WITH VALUE #( FOR comm IN comms INDEX INTO i (
+                           %tky      = comm-%tky
+                           commentid  = max_commid + i ) ).
+
+  ENDMETHOD.
+
+ENDCLASS.
+
+
+--------------------------------
+
+CLASS zr_t_contratos_query DEFINITION
+  PUBLIC
+  FINAL
+  CREATE PUBLIC .
+
+  PUBLIC SECTION.
+
+    INTERFACES if_oo_adt_classrun .
+    INTERFACES if_rap_query_provider .
+
+    TYPES t_business_data TYPE TABLE OF z_mig_mx_contratos=>tys_contracts_2.
+
+
+    METHODS get_Comments
+      IMPORTING
+        filter_cond        TYPE if_rap_query_filter=>tt_name_range_pairs   OPTIONAL
+        top                TYPE i OPTIONAL
+        skip               TYPE i OPTIONAL
+        is_data_requested  TYPE abap_bool
+        is_count_requested TYPE abap_bool
+      EXPORTING
+        business_data      TYPE t_business_data
+        count              TYPE int8
+      RAISING
+        /iwbep/cx_cp_remote
+        /iwbep/cx_gateway
+        cx_web_http_client_error
+        cx_http_dest_provider_error
+      .
+  PROTECTED SECTION.
+  PRIVATE SECTION.
+ENDCLASS.
+
+
+---------------------------------
+
+ZR_T_CONTRATOS_QUERY
+
+
+CLASS ZR_T_CONTRATOS_QUERY IMPLEMENTATION.
+
+
+  METHOD if_oo_adt_classrun~main.
+
+    DATA business_data TYPE t_business_data.
+    DATA count TYPE int8.
+    DATA filter_conditions  TYPE if_rap_query_filter=>tt_name_range_pairs .
+    DATA ranges_table TYPE if_rap_query_filter=>tt_range_option .
+    ranges_table = VALUE #( (  sign = 'I' option = 'EQ' low = 'CN-9999' high = '' ) ).
+    filter_conditions = VALUE #( ( name = 'ID'  range = ranges_table ) ).
+
+    TRY.
+        get_Comments(
+          EXPORTING
+            filter_cond        = filter_conditions
+            top                = 50
+            skip               = 0
+            is_count_requested = abap_true
+            is_data_requested  = abap_true
+          IMPORTING
+            business_data  = business_data
+            count          = count
+          ) .
+       out->write( |Total number of records = { count }| ) .
+        DATA: lt_comm_Business_Data TYPE TABLE OF z_mig_mx_contratos=>tys_contracts_2,
+              lt_comm_ce            TYPE STANDARD TABLE OF zr_migmxcont.
+        lt_comm_Business_Data = business_data.
+        lt_comm_ce = CORRESPONDING #( lt_comm_Business_Data ).
+
+
+        out->write( lt_comm_ce ).
+      CATCH cx_root INTO DATA(exception).
+        out->write( cl_message_helper=>get_latest_t100_exception( exception )->if_message~get_longtext( ) ).
+    ENDTRY.
+  ENDMETHOD.
+
+
+  METHOD if_rap_query_provider~select.
+
+    DATA business_data TYPE t_business_data.
+    DATA(top)     = io_request->get_paging( )->get_page_size( ).
+    DATA(skip)    = io_request->get_paging( )->get_offset( ).
+    DATA(requested_fields)  = io_request->get_requested_elements( ).
+    DATA(sort_order)    = io_request->get_sort_elements( ).
+    DATA count TYPE int8.
+    TRY.
+        DATA(filter_condition) = io_request->get_filter( )->get_as_ranges( ).
+
+        get_Comments(
+                 EXPORTING
+                  filter_cond        = filter_condition
+                 top                = CONV i( top )
+                   skip               = CONV i( skip )
+                   is_data_requested  = io_request->is_data_requested( )
+                   is_count_requested = io_request->is_total_numb_of_rec_requested(  )
+*                    is_count_requested = abap_false
+*                    is_data_requested  = abap_true
+                 IMPORTING
+                   business_data  = business_data
+                   count     = count
+                 ) .
+
+        IF io_request->is_total_numb_of_rec_requested(  ).
+          io_response->set_total_number_of_records( count ).
+        ENDIF.
+
+        IF io_request->is_data_requested(  ).
+          DATA: lt_comm_Business_Data TYPE TABLE OF z_mig_mx_contratos=>tys_contracts_2,
+                lt_comm_ce            TYPE STANDARD TABLE OF zr_migmxcont.
+          lt_comm_Business_Data = business_data.
+          lt_comm_ce = CORRESPONDING #( lt_comm_Business_Data ).
+
+          io_response->set_data( lt_comm_ce ).
+        ENDIF.
+
+      CATCH cx_root INTO DATA(exception).
+        DATA(exception_message) = cl_message_helper=>get_latest_t100_exception( exception )->if_message~get_longtext( ).
+        RAISE SHORTDUMP exception.
+    ENDTRY.
+
+
+  ENDMETHOD.
+
+
+  METHOD get_Comments.
+
+
+    DATA:
+      lt_business_data TYPE TABLE OF z_mig_mx_contratos=>tys_contracts_2,
+      lo_http_client   TYPE REF TO if_web_http_client,
+      lo_client_proxy  TYPE REF TO /iwbep/if_cp_client_proxy,
+      lo_request       TYPE REF TO /iwbep/if_cp_request_read_list,
+      lo_response      TYPE REF TO /iwbep/if_cp_response_read_lst.
+
+    DATA:
+      lo_filter_factory   TYPE REF TO /iwbep/if_cp_filter_factory,
+      lo_filter_node_1    TYPE REF TO /iwbep/if_cp_filter_node,
+* lo_filter_node_2    TYPE REF TO /iwbep/if_cp_filter_node,
+      lo_filter_node_root TYPE REF TO /iwbep/if_cp_filter_node.
+* lt_range_CREATED_AT TYPE RANGE OF timestampl,
+* lt_range_CREATED_BY TYPE RANGE OF <element_name>.
+
+
+
+    TRY.
+        " Create http client
+        DATA(lo_destination) = cl_http_destination_provider=>create_by_comm_arrangement(
+                                                     comm_scenario  = 'ZMIG_MX_OUT_ODATA_CONTRATOS'
+                                                     comm_system_id = 'CONTRATOS'
+                                                    service_id     = 'Z_MIG_MX_COMM_CON_REST'
+                                                    ).
+*
+        lo_http_client = cl_web_http_client_manager=>create_by_http_destination( lo_destination ).
+        lo_client_proxy = /iwbep/cl_cp_factory_remote=>create_v4_remote_proxy(
+          EXPORTING
+             is_proxy_model_key       = VALUE #( repository_id       = 'DEFAULT'
+                                                 proxy_model_id      = 'Z_MIG_MX_CONTRATOS'
+                                                 proxy_model_version = '0001' )
+            io_http_client             = lo_http_client
+            iv_relative_service_root   = '' ).
+
+        ASSERT lo_http_client IS BOUND.
+
+
+        " Navigate to the resource and create a request for the read operation
+        lo_request = lo_client_proxy->create_resource_for_entity_set( 'CONTRACTS' )->create_request_for_read( ).
+
+        " Create the filter tree
+        lo_filter_factory = lo_request->create_filter_factory( ).
+*
+*lo_filter_node_1  = lo_filter_factory->create_by_range( iv_property_path     = 'CREATED_AT'
+*                                                        it_range             = lt_range_CREATED_AT ).
+*lo_filter_node_2  = lo_filter_factory->create_by_range( iv_property_path     = 'CREATED_BY'
+*                                                        it_range             = lt_range_CREATED_BY ).
+
+*        lo_filter_node_root = lo_filter_node_1->and( lo_filter_node_2 ).
+*lo_request->set_filter( lo_filter_node_root ).
+
+*        lo_request->set_top( 50 )->set_skip( 0 ).
+
+        LOOP AT  filter_cond  INTO DATA(filter_condition).
+          lo_filter_node_1  = lo_filter_factory->create_by_range( iv_property_path     = filter_condition-name
+                                                                  it_range     = filter_condition-range ).
+          IF lo_filter_node_root IS INITIAL.
+            lo_filter_node_root = lo_filter_node_1.
+          ELSE.
+            lo_filter_node_root = lo_filter_node_root->and( lo_filter_node_1 ).
+          ENDIF.
+        ENDLOOP.
+
+        IF lo_filter_node_root IS NOT INITIAL.
+**/      read_list_request->set_filter( root_filter_node ).
+          lo_request->set_filter( lo_filter_node_root ).
+        ENDIF.
+
+        IF is_data_requested = abap_true.
+          lo_request->set_top( top ).
+          IF top > 0 .
+            lo_request->set_skip( skip ).
+          ENDIF.
+        ENDIF.
+
+
+*    lo_request->set_top( 50 )->set_skip( 0 ).
+*        " Execute the request and retrieve the business data
+        IF is_count_requested = abap_true.
+          lo_request->request_count(  ).
+        ENDIF.
+
+        IF is_data_requested = abap_false.
+          lo_request->request_no_business_data(  ).
+        ENDIF.
+
+        lo_response = lo_request->execute( ).
+
+
+        IF is_data_requested = abap_true.
+
+          lo_response->get_business_data( IMPORTING et_business_data = lt_business_data ).
+          business_data = lt_business_data.
+        ENDIF.
+
+        IF is_count_requested = abap_true.
+          count = lo_response->get_count(  ).
+        ENDIF.
+
+
+
+        " Execute the request and retrieve the business data
+
+      CATCH /iwbep/cx_cp_remote INTO DATA(lx_remote).
+        " Handle remote Exception
+        " It contains details about the problems of your http(s) connection
+        RAISE SHORTDUMP lx_remote.
+      CATCH /iwbep/cx_gateway INTO DATA(lx_gateway).
+        " Handle Exception
+        RAISE SHORTDUMP lx_gateway.
+      CATCH cx_web_http_client_error INTO DATA(lx_web_http_client_error).
+        " Handle Exception
+
+        RAISE SHORTDUMP lx_web_http_client_error.
+
+
+    ENDTRY.
+  ENDMETHOD.
+ENDCLASS.

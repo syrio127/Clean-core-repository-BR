@@ -19,3 +19,5 @@ https://lac-p2c-dev-trn-9tmfudfx.us10.process-automation.build.cloud.sap
 
 
 https://btp-psa-landscape-lac-p2c-dev-trn-p2c-dev-cap-clean-cor3e3e1b38.cfapps.us10.hana.ondemand.com/demosrv/Contracts
+
+https://btp-psa-landscape-lac-p2c-dev-trn-p2c-dev-cap-clean-cor3e3e1b38.cfapps.us10.hana.ondemand.com/demosrv/Contracts?$expand=contractItems&$filter=ID eq 'BPA-1718'

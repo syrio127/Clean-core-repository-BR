@@ -1,0 +1,172 @@
+Actualizar Main 
+
+3 - Condition 
+Parameter
+Control Expression	Step1.flowControl.ContratoHeader == true
+
+In Condition
+4 - Crear Automation ContratoLineas
+
+In Default
+5 - Log Message
+Input
+Message		"Error al Crear Cabecera Valide el Log"
+
+End
+
+
+4 - Crear Automation ContratoLineas
+Inputs
+flowControl	Control
+LineasContrato	LineasContrato	List
+
+Output
+flowControlLineas	Control
+
+Process
+1 - Create LineasContrato Variable
+output 
+LineasContratoFinal
+
+2 - Create Number Variable
+Input
+Value 	0 
+
+Output
+RepeatQty
+
+3 - for Each
+Set Looping List	Step0.LineasContrato
+
+4 - Custom Script
+Input
+ToolName	String	Step3.currentMember.tool
+
+Output 
+Objeto		Any
+
+Script
+return {
+    url: "/demosrv/getToolsByDescription(description='"+ ToolName +"')",
+    method: 'GET',
+    responseType:'json', // parse the body of the result as a JSON object
+    resolveBodyOnly:true, // get only the body of the response
+};
+
+5 - Try
+Error to Catch		RequesError
+
+6 - Call Web Service With Destination
+Input
+Destination	$.ContratosAPI
+options		Step4.Objeto
+
+7 - Log Message (Control y pruebas)
+Input
+Message		Step6.obj
+
+8 - Condition
+Condition Expression	Step6.obj.availableToolsList.length >= Step3.currentMember.Quantity
+
+In Condition
+9 - Set Variable Value
+Input
+variable	Step2.RepeatQty
+value		Step3.currentMember.Quantity
+
+In Default
+10 - Set Variable Value
+Input
+variable	Step2.RepeatQty
+Value		Step6.obj.availableToolsList.length
+
+11 - Log Message
+Input
+Message		"No hay Suficientes " + Step3.currentMember.tool + " Para Cargar el contrato"
+
+12 - Add Item (List)
+Input
+List	Step0.flowControl.ContratoLines
+ItemtoAdd	false
+
+8 - End Condition
+
+13 - Repeat
+Starting Value		1
+Endig	Value		Step2.RepeatQty
+
+14 - Log Message (Control y prueba)
+Input
+Message		Step6.obj.availableToolsList[Step13.index - 1]
+
+15 - Set Variable Value
+Input
+Variable	Step1.LineasFinal
+value
+Custom Data
+beginDate	Step3.currentMember.beginDate
+endDate		Step3.currentMember.endDate
+contract_ID	Step3.currentMember.contract_ID
+tool_ID		Step6.obj.availableToolsList[Step13.index - 1]._id
+
+16 - Custom Script
+Input
+LineaContrato	LineasContrato	Step1.LineasContratoFinal
+
+Output
+Objeto		Any	Step16.Objeto
+
+Script
+return {
+    url: '/demosrv/ContractItems',
+    method: 'Post',
+    responseType:'json', // parse the body of the result as a JSON object
+    resolveBodyOnly:false, // get only the body of the response
+    json: LineaContrato
+};
+
+17 - Call Web Service With Destination
+Input
+Destination	$.ContratosAPI
+options		Step16.Objeto
+
+18 - Log Message (Prueba y control)
+Input
+Message		obj.statusCode
+
+19 - Condition
+Condition Expression	Step17.obj.statusCode == '201'
+
+In Condition
+20 - Add Item (List)
+Input
+list		Step0.flowControl.ContratoLines
+Item to Add	true
+
+default
+21 - Add Item (list)
+Input		
+List		Step0.flowControl.ContratoLines
+Item to Add	false
+
+19 - end Condition
+
+5 - Catch
+22 - Add Item (list)
+Input		
+List		Step0.flowControl.ContratoLines
+Item to Add	false
+
+23 - Log Message (Control y prueba)
+Input
+Message		"Error en Request " + Step5.error.code + " - " + Step5.error.message
+
+5 - End Try
+
+24 - Log Message
+Input
+Message		flowControl
+
+End
+output
+flowControlLineas	Step0.flowControl

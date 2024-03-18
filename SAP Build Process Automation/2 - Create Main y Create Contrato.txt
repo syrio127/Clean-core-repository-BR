@@ -1,0 +1,80 @@
+Create Automation Main 
+Inputs
+Archivo	Document folder
+
+Enviroment variable
+ContratosAPI	Destination
+
+Create Automation CreateContract
+Inputs
+Path	Document folder
+Output
+flowControl	Control
+Contrato	Contrato
+ContratoLineas	LineasContrato
+
+Process
+
+1 - Exract Data pretrained
+Input
+documentType	Invoice
+documentPath	Path (Imput del proceso)
+
+2 - Create Contrato (variable)
+Input
+Custom Data
+descripcion	"Contrato Cargado por BPA" + Step1.extractedData.headerFields.documentNumber.value	
+beginDate	Step1.extractedData.headerFields.documentDate.value
+endDate		Step1.extractedData.headerFields.dueDate.value
+ID		"BPA-" + Step1.extractedData.headerFields.documentNumber.value
+businessPartner_BusinessPartner		Step1.extractedData.headerFields.taxId.value
+
+Output 
+Contrato
+
+3 - Crear Control Variable
+Input
+Custom Data
+ContratoHeader	false
+ContraoLines	Custom Data
+	Empty	list
+
+Output 
+flowControl
+
+4 - Log Message (Control y pruebas)
+Input
+message	2 - Contrato
+
+5 - Create LineasContrato variable
+output
+LineasContrato
+
+6 - for each
+Parameters
+Set Looping List	Step1.extractedData.lineItemFields
+
+7 - Add Item (List)
+Input
+list	Step5 - LineasContrato
+ItemtoAdd
+Custom Data
+beginDate	Step2.Contrato.beginDate
+endDate		Step2.Contrato.endDate
+tool		Step6.currentMember.description.value
+Quantity	Step6.currentMember.quantity.value
+contract_ID	Step2.Contrato.ID
+
+7 - End Loop
+
+8 - Log Message (Control y pruebas)
+Input
+Message		Step5.LineasContrato
+
+End
+output
+flowControl	Step3.FlowControl
+Contrato	Step2.Contrato
+ContratoLineas	Step5.LineasContrato
+
+

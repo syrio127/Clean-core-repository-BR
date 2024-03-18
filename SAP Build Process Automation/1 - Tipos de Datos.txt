@@ -1,0 +1,22 @@
+Crear Tipos de datos Contrato
+
+description	String
+beginDate	Date
+endDate		Date
+ID		String
+businessPartner_BusinessPartner	String
+
+Crear Tipo de datos Control
+
+ContratoHeader	Boolean
+ContaroLines	Boolean	List
+
+Crear Tipo de Dato LineasContrato
+BeginDate	Date
+endDate		Date
+tool		String
+Quantity	Number
+contract_ID	string
+tool_ID		String
+
+

@@ -1,0 +1,235 @@
+ZR_MIGMXTBCAL
+
+@AccessControl.authorizationCheck: #NOT_REQUIRED
+@EndUserText.label: '##GENERATED ZMIGMXTBCAL'
+@ObjectModel.semanticKey: ['CommentID']
+define root view entity ZR_MIGMXTBCAL
+  as select from zmigmxtbcal as CALCONTRATOS
+{
+  key comment_uuid as CommentUUID,
+  comment_id as CommentID,
+  rating_num as RatingNum,
+  details as Details,
+  contract_id as ContractID,
+  @Semantics.user.createdBy: true
+  created_by as CreatedBy,
+  @Semantics.systemDateTime.createdAt: true
+  created_at as CreatedAt,
+  @Semantics.user.lastChangedBy: true
+  last_changed_by as LastChangedBy,
+  @Semantics.systemDateTime.lastChangedAt: true
+  last_changed_at as LastChangedAt,
+  @Semantics.systemDateTime.localInstanceLastChangedAt: true
+  local_last_changed_at as LocalLastChangedAt
+  
+}
+
+ZC_MIGMXTBCAL
+
+@AccessControl.authorizationCheck: #CHECK
+@Metadata.allowExtensions: true
+@EndUserText.label: 'Projection View for ZR_MIGMXTBCAL'
+@ObjectModel.semanticKey: [ 'CommentID' ]
+define root view entity ZC_MIGMXTBCAL
+  provider contract transactional_query
+  as projection on ZR_MIGMXTBCAL
+{
+  key CommentUUID,
+  @Search.defaultSearchElement: true
+  CommentID,
+  RatingNum,
+  Details,
+  ContractID, 
+  LocalLastChangedAt
+  
+}
+
+ZR_MIGMXCONT
+
+@EndUserText.label: 'Contratos'
+@ObjectModel.query.implementedBy: 'ABAP:ZR_T_CONTRATOS_QUERY'
+define custom entity ZR_MIGMXCONT
+{
+  key id                        : abap.char(20);
+
+      description               : abap.string(256);
+
+      begin_date                : abap.datn;
+
+      end_date                  : abap.datn;
+
+      total_month_value         : abap.int4;
+      
+      total_month_currency      : abap.char(3);
+
+      business_partner_business : abap.char(10);
+
+      bp_name                   : abap.string(256);
+
+}
+
+
+-------------------------
+Metadata
+
+@Metadata.layer: #CORE
+@Search.searchable: true
+
+@UI: {
+  headerInfo: {
+    typeName: 'CALCONTRATOS', 
+    typeNamePlural: 'CALCONTRATOSs'
+  }
+}
+annotate view ZC_MIGMXTBCAL with
+{
+  @UI.facet: [ {
+    id: 'idIdentification', 
+    type: #IDENTIFICATION_REFERENCE, 
+    label: 'CALCONTRATOS', 
+    position: 10 
+  },
+   {
+    id : 'idRating' ,
+    type: #DATAPOINT_REFERENCE ,
+    label: 'Rating' ,
+    purpose: #STANDARD ,
+    position: 20,
+    targetQualifier: 'RatingNum'
+   } ]
+  @UI.hidden: true
+  CommentUUID;
+  
+  @UI.lineItem: [ {
+    position: 10 , 
+    importance: #MEDIUM, 
+    label: 'CommentID'
+  } ]
+  @UI.identification: [ {
+    position: 10 , 
+    label: 'CommentID'
+  } ]
+  @Search.defaultSearchElement: true
+  CommentID;
+  
+  @UI.lineItem: [ {
+    position: 20 ,
+    importance: #MEDIUM,
+    label: 'RatingNum',
+    type: #AS_DATAPOINT
+  } ]
+  @UI.selectionField: [ { position: 20 } ]
+  @UI.dataPoint:
+    {visualization:#RATING,
+     title:'Rating',
+     targetValue:5
+     }
+   @Search.defaultSearchElement: true
+  RatingNum;
+  
+  @UI.lineItem: [ {
+    position: 30 , 
+    importance: #MEDIUM, 
+    label: 'Details'
+  } ]
+  @UI.identification: [ {
+    position: 30 , 
+    label: 'Details'
+  } ]
+   @UI.multiLineText: true
+  Details;
+  
+  @UI.lineItem: [ {
+    position: 40 , 
+    importance: #MEDIUM, 
+    label: 'ContractID'
+  } ]
+  @UI.identification: [ {
+    position: 40 , 
+    label: 'ContractID'
+  } ]
+  @Search.defaultSearchElement: true
+  @Consumption.valueHelpDefinition: [{ entity : {name: 'ZR_MIGMXCONT', element: 'id'  }}]
+  ContractID;  
+  @UI.hidden: true
+  LocalLastChangedAt;
+}
+
+------------------------------
+Behivior Definition
+
+ZR_MIGMXTBCAL
+
+managed implementation in class ZBP_MIGMXTBCAL unique;
+strict ( 2 );
+with draft;
+
+define behavior for ZR_MIGMXTBCAL alias CALCONTRATOS
+persistent table zmigmxtbcal
+draft table ZMIGMXTBCAL_D
+etag master LocalLastChangedAt
+lock master total etag LastChangedAt
+authorization master( global )
+
+{
+  field ( readonly )
+   CommentUUID,
+   CreatedAt,
+   CreatedBy,
+   LastChangedAt,
+   LastChangedBy,
+   LocalLastChangedAt;
+
+  field ( numbering : managed )
+   CommentUUID;
+  field (readonly) CommentID;
+
+  determination setCALID on save {create;}
+
+
+  create;
+  update;
+  delete;
+
+  draft action Edit;
+  draft action Activate optimized;
+  draft action Discard;
+  draft action Resume;
+  draft determine action Prepare;
+
+  mapping for ZMIGMXTBCAL
+  {
+    CommentUUID = comment_uuid;
+    CommentID = comment_id;
+    RatingNum = rating_num;
+    Details = details;
+    ContractID = contract_id;
+    CreatedBy = created_by;
+    CreatedAt = created_at;
+    LastChangedBy = last_changed_by;
+    LastChangedAt = last_changed_at;
+    LocalLastChangedAt = local_last_changed_at;
+  }
+}
+
+
+ZC_MIGMXTBCAL
+
+projection;
+strict ( 2 );
+use draft;
+
+define behavior for ZC_MIGMXTBCAL alias CALCONTRATOS
+use etag
+
+{
+  use create;
+  use update;
+  use delete;
+
+  use action Edit;
+  use action Activate;
+  use action Discard;
+  use action Resume;
+  use action Prepare;
+}
